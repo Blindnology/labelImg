@@ -364,6 +364,10 @@ class MainWindow(QMainWindow, WindowMixin):
         self.autoSaving = QAction("Auto Saving", self)
         self.autoSaving.setCheckable(True)
         self.autoSaving.setChecked(settings.get(SETTING_AUTO_SAVE, False))
+        # Preserve labels : Preserve labels if pressing prev, next
+        self.preserveLabels = QAction("Preserve Labels", self)
+        self.preserveLabels.setCheckable(True)
+        self.preserveLabels.setChecked(settings.get(SETTING_PRESERVE_LABELS, False))
         # Sync single class mode from PR#106
         self.singleClassMode = QAction("Single Class Mode", self)
         self.singleClassMode.setShortcut("Ctrl+Shift+S")
@@ -382,6 +386,7 @@ class MainWindow(QMainWindow, WindowMixin):
         addActions(self.menus.help, (help, showInfo))
         addActions(self.menus.view, (
             self.autoSaving,
+            self.preserveLabels,
             self.singleClassMode,
             self.paintLabelsOption,
             labels, advancedMode, None,
@@ -413,6 +418,8 @@ class MainWindow(QMainWindow, WindowMixin):
         # Application state.
         self.image = QImage()
         self.filePath = ustr(defaultFilename)
+        self.prev_xmlPath = None
+        self.prev_txtPath = None
         self.recentFiles = []
         self.maxRecent = 7
         self.lineColor = None
@@ -1009,21 +1016,29 @@ class MainWindow(QMainWindow, WindowMixin):
                     os.path.splitext(self.filePath)[0])
                 xmlPath = os.path.join(self.defaultSaveDir, basename + XML_EXT)
                 txtPath = os.path.join(self.defaultSaveDir, basename + TXT_EXT)
-
-                """Annotation file priority:
-                PascalXML > YOLO
-                """
-                if os.path.isfile(xmlPath):
-                    self.loadPascalXMLByFilename(xmlPath)
-                elif os.path.isfile(txtPath):
-                    self.loadYOLOTXTByFilename(txtPath)
             else:
                 xmlPath = os.path.splitext(filePath)[0] + XML_EXT
                 txtPath = os.path.splitext(filePath)[0] + TXT_EXT
-                if os.path.isfile(xmlPath):
-                    self.loadPascalXMLByFilename(xmlPath)
-                elif os.path.isfile(txtPath):
-                    self.loadYOLOTXTByFilename(txtPath)
+
+            """Annotation file priority:
+            PascalXML > YOLO
+            """
+            if os.path.isfile(xmlPath):
+                self.loadPascalXMLByFilename(xmlPath)
+            elif os.path.isfile(txtPath):
+                self.loadYOLOTXTByFilename(txtPath)
+            # If in Preserve Labels mode and no labels file exist for current image then use previous labels if exist
+            elif self.preserveLabels.isChecked() and not self.prev_xmlPath is None:
+                if os.path.isfile(self.prev_xmlPath):
+                    self.loadPascalXMLByFilename(self.prev_xmlPath)
+                    self.dirty = True # Created boxes from previous image so need to set dirty flag
+                elif os.path.isfile(self.prev_txtPath):
+                    self.loadYOLOTXTByFilename(self.prev_txtPath)
+                    self.dirty = True # Created boxes from previous image so need to set dirty flag
+
+            # Save previous label files pathes to be able 
+            self.prev_xmlPath = xmlPath
+            self.prev_txtPath = txtPath
 
             self.setWindowTitle(__appname__ + ' ' + filePath)
 
@@ -1097,6 +1112,7 @@ class MainWindow(QMainWindow, WindowMixin):
             settings[SETTING_LAST_OPEN_DIR] = ""
 
         settings[SETTING_AUTO_SAVE] = self.autoSaving.isChecked()
+        settings[SETTING_PRESERVE_LABELS] = self.preserveLabels.isChecked()
         settings[SETTING_SINGLE_CLASS] = self.singleClassMode.isChecked()
         settings[SETTING_PAINT_LABEL] = self.paintLabelsOption.isChecked()
         settings.save()
