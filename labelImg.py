@@ -1181,6 +1181,10 @@ class MainWindow(QMainWindow, WindowMixin):
         targetDirPath = ustr(QFileDialog.getExistingDirectory(self,
                                                      '%s - Open Directory' % __appname__, defaultOpenDirPath,
                                                      QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks))
+        # Change default save dir to target dir
+        if len(targetDirPath):
+            self.defaultSaveDir = targetDirPath
+
         self.importDirImages(targetDirPath)
 
     def importDirImages(self, dirpath):
