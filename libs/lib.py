@@ -80,4 +80,15 @@ def generateColorByText(text):
     r = int((hashCode / 255) % 255)
     g = int((hashCode / 65025)  % 255)
     b = int((hashCode / 16581375)  % 255)
-    return QColor(r, g, b, 100)
+    color = QColor(r, g, b, 100)
+    
+    if text == "red light":
+        color = QColor(200, 150, 0, 200)
+    elif text == "green light":
+        color = QColor(0, 170, 0, 200)
+    elif text == "crosswalk left":
+        color = QColor(0, 170, 255, 200)
+    elif text == "crosswalk right":
+        color = QColor(0, 255, 170, 200)
+
+    return color
